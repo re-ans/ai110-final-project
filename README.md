@@ -1,103 +1,110 @@
-# 🎵 Music Recommender Simulation
+# 🎵 AI-Enhanced Music Recommender
 
-## Project Summary
+## Title and Summary
 
-This is a content-based music recommendation system that represents songs and user taste profiles as data, then uses a weighted-score algorithm to predict which songs a user will love. The system loads a catalog of songs with audio features (genre, mood, energy, acousticness, etc.), captures a user's preferences, and scores each song based on how well it matches the user's taste. The top-k recommendations are returned with human-readable explanations for why each song was suggested. This simulation demonstrates how companies like Spotify and Apple Music make personalization decisions, and reveals how simple algorithms naturally encode bias—overprioritizing certain genres, ignoring minority preferences, and creating "filter bubbles." By building and testing this system, we learn that recommendation engines are not neutral; they reflect the design choices and data we give them.
+This project is an AI-enhanced music recommendation system that uses a content-based filtering algorithm combined with a reliability testing system. Originally, it was a simple recommender that matched songs to user profiles based on weighted scores. Now, it includes confidence scoring, structured logging, and an evaluation harness to ensure the recommendations are not only relevant but also reliable.
 
----
+## Architecture Overview
 
-## How The System Works
+The system is designed with a clear separation of concerns, flowing from data loading to recommendation and evaluation.
 
-### Song Features
+```mermaid
+graph TD
+    A[Input: User Profile] --> B{Recommender System};
+    C[data/songs.csv] --> B;
+    B --> D[Output: Top 5 Recommendations];
+    D --> E[Human Review];
 
-Each song is represented by the following attributes:
-
-- **Categorical**: `genre` (pop, rock, lofi, ambient, etc.), `mood` (happy, chill, intense, relaxed, etc.)
-- **Numeric**: `energy` (0.0–1.0 scale), `tempo_bpm` (beats per minute), `valence` (musical positivity), `danceability`, `acousticness`
-
-These features are loaded from `data/songs.csv` and stored as dictionaries with numeric values converted to floats for scoring calculations.
-
-### User Profile
-
-A user's taste preferences are captured as a dictionary:
-
-```python
-{
-    "genre": "pop",          # Favorite genre
-    "mood": "happy",         # Desired mood
-    "energy": 0.8,           # Target energy level (0-1)
-    "likes_acoustic": False  # Acoustic preference (True/False)
-}
+    subgraph "Reliability & Testing"
+        F[src/evaluation.py] --> G{Test Harness};
+        H[Test Cases] --> G;
+        G --> I[Evaluation Summary];
+        I --> J[Developer Analysis];
+    end
 ```
 
-### Scoring Algorithm (Algorithm Recipe)
+1.  **User Profile & Song Data**: The system takes a user's taste profile and a CSV of songs as input.
+2.  **Recommender System**: The core `Recommender` class scores songs, normalizes scores into a confidence metric, and returns the top recommendations. It now includes logging to track its behavior.
+3.  **Output**: The system outputs the top 5 songs with a confidence score and an explanation for each.
+4.  **Test Harness**: A separate `evaluation.py` script runs predefined test cases against the recommender to produce a pass/fail summary, ensuring its logic remains sound.
 
-The system scores each song using a **weighted sum** of four factors:
+## Setup Instructions
 
-1. **Genre Match** (weight: +2.0) — If the song's genre matches user's favorite genre, add 2.0 points.
-2. **Mood Match** (weight: +1.5) — If the song's mood matches user's desired mood, add 1.5 points.
-3. **Energy Proximity** (weight: +1.5) — Songs close to the user's target energy score higher. Score = 1.5 × (1.0 − |song_energy − target_energy|)
-4. **Acoustic Preference** (weight: +0.5) — If user likes acoustic music AND song acousticness > 0.5, add 0.5 points. If user dislikes acoustic AND acousticness ≤ 0.5, add 0.5 points.
+1.  **Create a virtual environment** (optional but recommended):
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate  # macOS/Linux
+    # .venv\Scripts\activate  # Windows
+    ```
 
-**Example**: For a pop + happy + high-energy user:
-- "Sunrise City" (pop, happy, 0.82 energy) scores: 2.0 + 1.5 + 1.41 + 0.5 = **5.41 points**
-- "Night Drive Loop" (synthwave, moody, 0.75 energy) scores: 0 + 0 + 1.33 + 0.5 = **1.83 points**
+2.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-### Recommendation Process
+3.  **Run the main application**:
+    ```bash
+    python -m src.main
+    ```
 
-1. Load all songs from CSV
-2. For each song, calculate its score using the algorithm above
-3. Sort songs by score (highest first)
-4. Return top `k` recommendations (default: 5) with explanations
+4.  **Run the evaluation script**:
+    ```bash
+    python -m src.evaluation
+    ```
 
----
+## Sample Interactions
 
-## Getting Started
+### Example 1: Pop Music Fan
 
-### Setup
+**Input**:
+-   Favorite Genre: `Pop`
+-   Favorite Mood: `Happy`
+-   Target Energy: `0.8`
 
-1. Create a virtual environment (optional but recommended):
-
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate      # Mac or Linux
-   .venv\Scripts\activate         # Windows
-
-2. Install dependencies
-
-```bash
-pip install -r requirements.txt
+**Output**:
+```
+'Sunshine Pop' by The Upbeats
+  Confidence: 1.00
+  Reason: genre match (Pop) + mood match (Happy) + energy 0.85 (target: 0.8) + produced sound
 ```
 
-3. Run the app:
+### Example 2: Lofi Music Fan
 
-```bash
-python -m src.main
+**Input**:
+-   Favorite Genre: `Lofi`
+-   Favorite Mood: `Chill`
+-   Target Energy: `0.3`
+
+**Output**:
+```
+'Midnight Lofi' by Chill Beats
+  Confidence: 1.00
+  Reason: genre match (Lofi) + mood match (Chill) + energy 0.20 (target: 0.3) + acoustic match
 ```
 
-### Running Tests
+## Design Decisions
 
-Run the starter tests with:
+-   **Confidence Score**: I chose to normalize the recommendation scores into a 0-1 confidence range. This makes the output more interpretable than an arbitrary score. It represents how strongly the top choice stands out from others.
+-   **Structured Logging**: I added logging to `main.py` to track the system's lifecycle. This is crucial for debugging and ensuring the application runs as expected, especially in a production environment.
+-   **Evaluation Harness**: Instead of just unit tests, I built `evaluation.py`. This script acts as a "test harness," running integration tests against the live recommender with predefined user profiles. It provides a clear, high-level report on whether the core logic is meeting its quality goals.
 
-```bash
-pytest
-```
+## Testing Summary
 
-You can add more tests in `tests/test_recommender.py`.
+The evaluation script tests the recommender with three profiles.
+-   **Results**: 2 out of 3 tests passed.
+-   **Successes**: The system correctly identified the best match for the "Pop lover" and "Lofi listener."
+-   **Failure**: It failed the "Mismatched preferences" test, where it recommended a song even when no good match existed. This highlights a limitation: the system will always try to recommend something, even if confidence is low.
+-   **Confidence Scores**: The confidence scores were 1.00 for the successful matches, indicating a clear winner. For the failed test, the confidence was lower, which correctly signals a less reliable recommendation.
 
----
+## Reflection
 
-## Experiments You Tried
+-   **Limitations & Biases**: The system is biased towards the features in the dataset (genre, mood, energy). It cannot recommend songs outside of these narrow parameters and may create a "filter bubble."
+-   **Misuse**: The recommender could be misused to promote certain songs or artists by manipulating the scoring weights or song data. Guardrails, like capping weights and validating data sources, would be necessary to prevent this.
+-   **Surprises**: I was surprised by how clearly the evaluation script pinpointed the system's failure mode. Seeing the "Mismatched preferences" test fail made it obvious that the recommender needs a "do not recommend" threshold.
+-   **AI Collaboration**: The AI was helpful in generating the boilerplate for the `evaluation.py` script, which saved time. However, its initial suggestion for confidence scoring was flawed—it proposed a complex softmax function, whereas simple normalization was more direct and interpretable for this use case.
 
-### Experiment 1: Weight Sensitivity
-Tested how changing genre weight affected recommendations:
-- **Default (Genre: 2.0)**: Pop fan always gets pop songs first; very consistent but homogeneous.
-- **Reduced (Genre: 0.5)**: Results became more diverse—moody synthwave ranked high for a happy user if it matched energy.
-- **Key finding**: Genre weight at 2.0 is strong; users get what they ask for but lose discovery opportunities.
+This project taught me that building a reliable AI system requires more than just a good algorithm. It demands a robust framework for testing, logging, and evaluation to ensure it behaves predictably and responsibly.
 
-### Experiment 2: User Profiles
-Tested three distinct user profiles:
-- **"High-Energy Pop" user** (pop, happy, energy=0.8, likes_acoustic=False):
   - Top results: "Sunrise City", "Gym Hero", "Rooftop Lights" ✓ Correct! All high-energy pop.
 - **"Chill Lofi" user** (lofi, chill, energy=0.4, likes_acoustic=True):
   - Top results: "Library Rain", "Midnight Coding" ✓ Correct! Acoustic, lo-fi, under 0.5 energy.

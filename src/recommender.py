@@ -38,7 +38,7 @@ class Recommender:
     def __init__(self, songs: List[Song]):
         self.songs = songs
 
-    def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
+    def recommend(self, user: UserProfile, k: int = 5) -> List[Tuple[Song, float]]:
         """Score all songs and return top k sorted by score."""
         scored_songs = []
         for song in self.songs:
@@ -47,7 +47,16 @@ class Recommender:
         
         # Sort by score descending and return top k
         scored_songs.sort(key=lambda x: x[1], reverse=True)
-        return [song for song, _ in scored_songs[:k]]
+        
+        # Normalize scores to be between 0 and 1 for confidence
+        max_score = scored_songs[0][1] if scored_songs else 1.0
+        
+        recommendations = []
+        for song, score in scored_songs[:k]:
+            confidence = score / max_score if max_score > 0 else 0
+            recommendations.append((song, confidence))
+            
+        return recommendations
 
     def explain_recommendation(self, user: UserProfile, song: Song) -> str:
         """Generate a human-readable explanation for why a song was recommended."""
